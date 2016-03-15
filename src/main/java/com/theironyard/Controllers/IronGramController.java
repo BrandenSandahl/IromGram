@@ -1,23 +1,28 @@
 package com.theironyard.controllers;
 
-import com.sun.deploy.net.HttpResponse;
 import com.theironyard.Utils.PasswordStorage;
+import com.theironyard.entities.Photo;
 import com.theironyard.entities.User;
 import com.theironyard.services.PhotoRepository;
 import com.theironyard.services.UserRepository;
 import org.h2.tools.Server;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.sql.SQLException;
+import java.io.File;
+import java.time.LocalDateTime;
 import java.util.List;
+
 
 /**
  * Created by branden on 3/15/16 at 11:08.
@@ -63,6 +68,69 @@ public class IronGramController {
         String userName = (String) session.getAttribute("userName");
         return userRepository.findByName(userName);
     }
+
+    @RequestMapping(path = "/upload", method = RequestMethod.POST)
+    public Photo upload(MultipartFile photo, Integer timer,String recipient, HttpSession session, HttpServletResponse response) throws Exception {
+        String userName = (String) session.getAttribute("userName");
+        if (userName == null) {
+            throw new Exception("Not logged in.");
+        }
+
+
+        User sender = userRepository.findByName(userName);
+
+        User recipientObj = (recipient == null) ? sender : userRepository.findByName(recipient);
+
+        if (recipientObj == null) throw new Exception("Recipient is not an IronGram member");
+
+
+
+        //all this creates a random file name
+        File photoFile = File.createTempFile("image", photo.getOriginalFilename(), new File("public"));
+        FileOutputStream fos = new FileOutputStream(photoFile);
+        fos.write(photo.getBytes());
+
+
+        Photo p = new Photo(sender, recipientObj, photoFile.getName(), LocalDateTime.now(), timer);
+
+        photoRepository.save(p);
+
+        response.sendRedirect("/");
+        return p;
+    }
+
+    @RequestMapping(path = "/photos", method = RequestMethod.GET)
+    public List<Photo> showPhotos(HttpSession session) {
+
+        User user = userRepository.findByName((String) session.getAttribute("userName"));
+
+        List<Photo> photosInDbOld = (List<Photo>) photoRepository.findAll();
+
+        for (Photo p : photosInDbOld) {
+            LocalDateTime photoTime = p.getCreatedTime();
+            LocalDateTime timeNow = LocalDateTime.now();
+
+            //http://www.leveluplunch.com/java/examples/calculate-time-difference/
+            long difference = java.time.Duration.between(photoTime, timeNow).getSeconds();
+
+            if (difference > p.getTimeToStoreFile()) {
+                File photoFile = new File("public/" + p.getFileName());
+                photoFile.delete();
+                photoRepository.delete(p);
+
+            }
+        }
+        return photoRepository.findAllByRecipient(user);
+    }
+
+
+    @RequestMapping(path = "/logout", method = RequestMethod.POST)
+    public String logout(HttpSession session, HttpServletResponse response) throws IOException {
+        session.invalidate();
+        response.sendRedirect("/");
+        return null;
+    }
+
 
 
 }
