@@ -76,20 +76,17 @@ public class IronGramController {
             throw new Exception("Not logged in.");
         }
 
-
+        //person Object that sent the photo
         User sender = userRepository.findByName(userName);
-
+        //person Object that gets the photo
         User recipientObj = (recipient == null) ? sender : userRepository.findByName(recipient);
 
         if (recipientObj == null) throw new Exception("Recipient is not an IronGram member");
-
-
 
         //all this creates a random file name
         File photoFile = File.createTempFile("image", photo.getOriginalFilename(), new File("public"));
         FileOutputStream fos = new FileOutputStream(photoFile);
         fos.write(photo.getBytes());
-
 
         Photo p = new Photo(sender, recipientObj, photoFile.getName(), LocalDateTime.now(), timer);
 
@@ -125,10 +122,9 @@ public class IronGramController {
 
 
     @RequestMapping(path = "/logout", method = RequestMethod.POST)
-    public String logout(HttpSession session, HttpServletResponse response) throws IOException {
+    public void logout(HttpSession session, HttpServletResponse response) throws IOException {
         session.invalidate();
         response.sendRedirect("/");
-        return null;
     }
 
 
