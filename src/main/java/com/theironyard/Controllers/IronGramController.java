@@ -83,6 +83,12 @@ public class IronGramController {
 
         if (recipientObj == null) throw new Exception("Recipient is not an IronGram member");
 
+        //check to make sure we have photo
+        if (!photo.getContentType().startsWith("image")) {
+            throw new Exception("Images only please");
+        }
+
+
         //all this creates a random file name
         File photoFile = File.createTempFile("image", photo.getOriginalFilename(), new File("public"));
         FileOutputStream fos = new FileOutputStream(photoFile);
@@ -99,16 +105,16 @@ public class IronGramController {
     @RequestMapping(path = "/photos", method = RequestMethod.GET)
     public List<Photo> showPhotos(HttpSession session) {
 
-        User user = userRepository.findByName((String) session.getAttribute("userName"));
+        User user = userRepository.findByName((String) session.getAttribute("userName")); //logged in person
 
-        List<Photo> photosInDbOld = (List<Photo>) photoRepository.findAll();
+        List<Photo> photosInDbOld = (List<Photo>) photoRepository.findAll();  //all photos in DB
 
-        for (Photo p : photosInDbOld) {
-            LocalDateTime photoTime = p.getCreatedTime();
-            LocalDateTime timeNow = LocalDateTime.now();
+        for (Photo p : photosInDbOld) { //loop through them all
+            LocalDateTime photoTime = p.getCreatedTime();   //time photo was created
+            LocalDateTime timeNow = LocalDateTime.now();    //now
 
             //http://www.leveluplunch.com/java/examples/calculate-time-difference/
-            long difference = java.time.Duration.between(photoTime, timeNow).getSeconds();
+            long difference = java.time.Duration.between(photoTime, timeNow).getSeconds();  //difference of those things
 
             if (difference > p.getTimeToStoreFile()) {
                 File photoFile = new File("public/" + p.getFileName());
